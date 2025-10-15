@@ -1,0 +1,561 @@
+# 🔌 API Documentation - NPAY
+
+## Vue d'ensemble
+
+L'API NPAY fournit une interface RESTful complète pour intégrer les fonctionnalités de paiement dans vos applications. Elle supporte l'authentification, la gestion des transactions, les webhooks et bien plus.
+
+## 🚀 Démarrage Rapide
+
+### Base URL
+```
+Production: https://api.npay.com/v1
+Sandbox:    https://sandbox-api.npay.com/v1
+```
+
+### Authentification
+```bash
+# Clé API dans l'en-tête
+curl -H "Authorization: Bearer YOUR_API_KEY" \
+     -H "Content-Type: application/json" \
+     https://api.npay.com/v1/transactions
+```
+
+## 📋 Endpoints Principaux
+
+### 🔐 Authentification
+
+#### Login
+```http
+POST /auth/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123",
+  "remember": true
+}
+```
+
+**Réponse :**
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": 1,
+      "email": "user@example.com",
+      "name": "John Doe"
+    },
+    "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+    "expires_in": 3600
+  }
+}
+```
+
+#### Register
+```http
+POST /auth/register
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "user@example.com",
+  "password": "password123",
+  "password_confirmation": "password123"
+}
+```
+
+#### Logout
+```http
+POST /auth/logout
+Authorization: Bearer YOUR_TOKEN
+```
+
+### 💳 Transactions
+
+#### Créer une Transaction
+```http
+POST /transactions
+Authorization: Bearer YOUR_TOKEN
+Content-Type: application/json
+
+{
+  "amount": 100.00,
+  "currency": "USD",
+  "description": "Payment for services",
+  "customer": {
+    "email": "customer@example.com",
+    "name": "Customer Name"
+  },
+  "payment_method": {
+    "type": "card",
+    "card": {
+      "number": "4242424242424242",
+      "exp_month": 12,
+      "exp_year": 2025,
+      "cvc": "123"
+    }
+  }
+}
+```
+
+**Réponse :**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "txn_123456789",
+    "amount": 100.00,
+    "currency": "USD",
+    "status": "pending",
+    "created_at": "2024-01-15T10:30:00Z",
+    "payment_url": "https://pay.npay.com/txn_123456789"
+  }
+}
+```
+
+#### Récupérer une Transaction
+```http
+GET /transactions/{id}
+Authorization: Bearer YOUR_TOKEN
+```
+
+#### Lister les Transactions
+```http
+GET /transactions?page=1&limit=20&status=completed
+Authorization: Bearer YOUR_TOKEN
+```
+
+### 💰 Paiements
+
+#### Créer un Paiement
+```http
+POST /payments
+Authorization: Bearer YOUR_TOKEN
+Content-Type: application/json
+
+{
+  "transaction_id": "txn_123456789",
+  "payment_method": "stripe",
+  "metadata": {
+    "order_id": "order_123",
+    "customer_id": "cust_456"
+  }
+}
+```
+
+#### Webhooks
+```http
+POST /webhooks/stripe
+Content-Type: application/json
+X-Stripe-Signature: t=1234567890,v1=signature
+
+{
+  "id": "evt_123456789",
+  "type": "payment_intent.succeeded",
+  "data": {
+    "object": {
+      "id": "pi_123456789",
+      "amount": 10000,
+      "currency": "usd",
+      "status": "succeeded"
+    }
+  }
+}
+```
+
+### 👥 Utilisateurs
+
+#### Profil Utilisateur
+```http
+GET /user/profile
+Authorization: Bearer YOUR_TOKEN
+```
+
+#### Mettre à jour le Profil
+```http
+PUT /user/profile
+Authorization: Bearer YOUR_TOKEN
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "phone": "+1234567890"
+}
+```
+
+### 🏪 Merchants
+
+#### Créer un Merchant
+```http
+POST /merchants
+Authorization: Bearer YOUR_TOKEN
+Content-Type: application/json
+
+{
+  "business_name": "My Business",
+  "business_type": "retail",
+  "website": "https://mybusiness.com",
+  "contact_email": "contact@mybusiness.com"
+}
+```
+
+#### Configuration Merchant
+```http
+GET /merchants/{id}/settings
+Authorization: Bearer YOUR_TOKEN
+```
+
+### 📊 Analytics
+
+#### Statistiques
+```http
+GET /analytics/overview?period=30d
+Authorization: Bearer YOUR_TOKEN
+```
+
+**Réponse :**
+```json
+{
+  "success": true,
+  "data": {
+    "total_transactions": 1250,
+    "total_volume": 125000.00,
+    "success_rate": 98.5,
+    "average_transaction": 100.00,
+    "period": "30d"
+  }
+}
+```
+
+## 🔒 Sécurité
+
+### Authentification
+
+#### API Keys
+```bash
+# Générer une clé API
+curl -X POST https://api.npay.com/v1/api-keys \
+     -H "Authorization: Bearer YOUR_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"name": "My App", "permissions": ["transactions:read", "transactions:write"]}'
+```
+
+#### JWT Tokens
+```json
+{
+  "iss": "npay-api",
+  "sub": "user_123",
+  "aud": "npay-app",
+  "exp": 1640995200,
+  "iat": 1640908800,
+  "scope": ["transactions:read", "transactions:write"]
+}
+```
+
+### Rate Limiting
+```http
+X-RateLimit-Limit: 1000
+X-RateLimit-Remaining: 999
+X-RateLimit-Reset: 1640995200
+```
+
+### Webhooks Sécurisés
+
+#### Vérification de Signature
+```php
+// PHP - Vérification Stripe
+$payload = file_get_contents('php://input');
+$sig_header = $_SERVER['HTTP_STRIPE_SIGNATURE'];
+$endpoint_secret = 'whsec_...';
+
+$event = \Stripe\Webhook::constructEvent(
+    $payload, $sig_header, $endpoint_secret
+);
+```
+
+```javascript
+// Node.js - Vérification PayPal
+const crypto = require('crypto');
+
+function verifyPayPalWebhook(headers, body, webhookId) {
+  const signature = headers['paypal-transmission-sig'];
+  const certId = headers['paypal-cert-id'];
+  const timestamp = headers['paypal-transmission-time'];
+  
+  const data = `${certId}|${timestamp}|${body}`;
+  const hash = crypto.createHmac('sha256', webhookSecret).update(data).digest('base64');
+  
+  return hash === signature;
+}
+```
+
+## 📝 Codes de Statut
+
+### Succès
+- `200 OK` - Requête réussie
+- `201 Created` - Ressource créée
+- `202 Accepted` - Requête acceptée (traitement asynchrone)
+
+### Erreurs Client
+- `400 Bad Request` - Requête malformée
+- `401 Unauthorized` - Authentification requise
+- `403 Forbidden` - Accès refusé
+- `404 Not Found` - Ressource non trouvée
+- `422 Unprocessable Entity` - Données invalides
+- `429 Too Many Requests` - Rate limit dépassé
+
+### Erreurs Serveur
+- `500 Internal Server Error` - Erreur serveur
+- `502 Bad Gateway` - Erreur passerelle
+- `503 Service Unavailable` - Service indisponible
+
+## 🔄 Pagination
+
+### Paramètres
+```http
+GET /transactions?page=2&limit=50&sort=created_at&order=desc
+```
+
+### Réponse
+```json
+{
+  "data": [...],
+  "pagination": {
+    "current_page": 2,
+    "per_page": 50,
+    "total": 1250,
+    "last_page": 25,
+    "from": 51,
+    "to": 100
+  },
+  "links": {
+    "first": "https://api.npay.com/v1/transactions?page=1",
+    "last": "https://api.npay.com/v1/transactions?page=25",
+    "prev": "https://api.npay.com/v1/transactions?page=1",
+    "next": "https://api.npay.com/v1/transactions?page=3"
+  }
+}
+```
+
+## 🔍 Filtres et Recherche
+
+### Filtres Disponibles
+```http
+# Par statut
+GET /transactions?status=completed
+
+# Par date
+GET /transactions?from=2024-01-01&to=2024-01-31
+
+# Par montant
+GET /transactions?amount_min=10&amount_max=1000
+
+# Par devise
+GET /transactions?currency=USD
+
+# Recherche textuelle
+GET /transactions?search=payment
+```
+
+### Tri
+```http
+# Tri par date (défaut)
+GET /transactions?sort=created_at&order=desc
+
+# Tri par montant
+GET /transactions?sort=amount&order=asc
+
+# Tri par statut
+GET /transactions?sort=status&order=asc
+```
+
+## 📊 Webhooks
+
+### Événements Disponibles
+
+#### Transactions
+- `transaction.created` - Transaction créée
+- `transaction.updated` - Transaction mise à jour
+- `transaction.completed` - Transaction terminée
+- `transaction.failed` - Transaction échouée
+- `transaction.cancelled` - Transaction annulée
+
+#### Paiements
+- `payment.succeeded` - Paiement réussi
+- `payment.failed` - Paiement échoué
+- `payment.refunded` - Paiement remboursé
+- `payment.disputed` - Paiement contesté
+
+#### Utilisateurs
+- `user.created` - Utilisateur créé
+- `user.updated` - Utilisateur mis à jour
+- `user.deleted` - Utilisateur supprimé
+
+### Configuration Webhook
+```http
+POST /webhooks
+Authorization: Bearer YOUR_TOKEN
+Content-Type: application/json
+
+{
+  "url": "https://your-app.com/webhooks/npay",
+  "events": ["transaction.completed", "payment.succeeded"],
+  "secret": "your-webhook-secret"
+}
+```
+
+## 🧪 SDK et Exemples
+
+### PHP SDK
+```php
+use NPay\NPayClient;
+
+$client = new NPayClient('your-api-key');
+
+// Créer une transaction
+$transaction = $client->transactions()->create([
+    'amount' => 100.00,
+    'currency' => 'USD',
+    'description' => 'Payment for services'
+]);
+
+// Récupérer une transaction
+$transaction = $client->transactions()->find('txn_123456789');
+```
+
+### JavaScript SDK
+```javascript
+import NPay from '@npay/sdk';
+
+const client = new NPay('your-api-key');
+
+// Créer une transaction
+const transaction = await client.transactions.create({
+    amount: 100.00,
+    currency: 'USD',
+    description: 'Payment for services'
+});
+
+// Écouter les webhooks
+client.webhooks.on('transaction.completed', (event) => {
+    console.log('Transaction completed:', event.data);
+});
+```
+
+### Python SDK
+```python
+from npay import NPayClient
+
+client = NPayClient('your-api-key')
+
+# Créer une transaction
+transaction = client.transactions.create(
+    amount=100.00,
+    currency='USD',
+    description='Payment for services'
+)
+
+# Récupérer les transactions
+transactions = client.transactions.list(limit=50)
+```
+
+## 🚀 Intégration
+
+### Étapes d'Intégration
+
+1. **Créer un compte** et obtenir vos clés API
+2. **Configurer l'authentification** dans votre application
+3. **Implémenter les webhooks** pour les notifications
+4. **Tester en sandbox** avant la production
+5. **Déployer en production** avec monitoring
+
+### Checklist de Déploiement
+- [ ] Clés API configurées
+- [ ] Webhooks configurés et testés
+- [ ] Gestion d'erreurs implémentée
+- [ ] Logs de sécurité activés
+- [ ] Monitoring configuré
+- [ ] Tests de charge effectués
+
+## 📞 Support
+
+### Ressources
+- **Documentation** : [docs.npay.com](https://docs.npay.com)
+- **Status Page** : [status.npay.com](https://status.npay.com)
+- **Support Email** : api-support@npay.com
+- **Discord** : [discord.gg/npay](https://discord.gg/npay)
+
+### Limites et Quotas
+- **Rate Limit** : 1000 requêtes/heure par défaut
+- **Webhook Timeout** : 30 secondes
+- **Payload Max** : 1MB
+- **Concurrent Requests** : 100 par IP
+
+## 🧪 Tests avec Postman
+
+### Collection Postman Complète
+
+Nous fournissons une collection Postman complète pour tester l'API NPAY :
+
+#### Fichiers Inclus
+- **`NPAY_API_Collection.postman_collection.json`** - Collection complète des endpoints
+- **`NPAY_Environment.postman_environment.json`** - Variables d'environnement
+- **`POSTMAN_GUIDE.md`** - Guide d'utilisation détaillé
+- **`run-tests.sh`** - Script d'automatisation avec Newman
+- **`newman-config.json`** - Configuration des tests
+
+#### Installation Rapide
+
+1. **Importer la Collection**
+   ```bash
+   # Dans Postman
+   File > Import > NPAY_API_Collection.postman_collection.json
+   ```
+
+2. **Importer l'Environnement**
+   ```bash
+   # Dans Postman
+   Environments > Import > NPAY_Environment.postman_environment.json
+   ```
+
+3. **Configurer les Variables**
+   ```json
+   {
+     "base_url": "https://api.npay.com/v1",
+     "user_email": "test@example.com",
+     "user_password": "password123"
+   }
+   ```
+
+#### Tests Automatisés
+
+```bash
+# Tests locaux
+./run-tests.sh local
+
+# Tests sandbox
+./run-tests.sh sandbox --verbose
+
+# Tests de performance
+./run-tests.sh sandbox --performance
+
+# Tests de sécurité
+./run-tests.sh sandbox --security
+```
+
+#### Fonctionnalités de Test
+
+- ✅ **Tests Automatiques** - Chaque requête inclut des tests
+- ✅ **Variables Dynamiques** - Sauvegarde automatique des tokens
+- ✅ **Tests de Performance** - Vérification des temps de réponse
+- ✅ **Tests de Sécurité** - Validation des headers et authentification
+- ✅ **Rapports Multi-format** - HTML, JUnit, JSON
+- ✅ **CI/CD Ready** - Intégration GitHub Actions, GitLab CI
+
+#### Exemples d'Utilisation
+
+```bash
+# Test complet avec rapports
+newman run NPAY_API_Collection.
