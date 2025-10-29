@@ -1,0 +1,75 @@
+---
+title: "Prerequisites"
+description: "What you need before integrating the NPAY Payment Gateway API"
+---
+
+# Prerequisites
+
+Before you begin integrating the NPAY Payment Gateway API, make sure you have the following:
+
+## Required Items
+
+<Checklist>
+  <ChecklistItem>
+    **An active NPAY merchant account**
+    
+    You need a registered merchant account to access the API. If you don't have one, you can [register here](/merchant/register).
+  </ChecklistItem>
+  <ChecklistItem>
+    **Basic knowledge of API integration and web development**
+    
+    Familiarity with REST APIs, HTTP methods, and web development concepts (PHP & Laravel recommended).
+  </ChecklistItem>
+  <ChecklistItem>
+    **A secure and accessible web server**
+    
+    Your server should be able to handle API requests and responses securely.
+  </ChecklistItem>
+</Checklist>
+
+## Development Environment
+
+### Recommended Setup
+
+- **PHP 7.4+** or **Laravel 8+**
+- **HTTPS-enabled server** for secure API communication
+- **cURL** or **Guzzle HTTP** for making API requests
+- **JSON** support for handling API responses
+
+### Optional Tools
+
+- **Postman** or similar API testing tools
+- **Git** for version control
+- **Composer** for PHP dependency management
+
+## Security Requirements
+
+<Warning>
+  Always use HTTPS for all API communications. Never send sensitive data over unencrypted connections.
+</Warning>
+
+- Use secure, encrypted connections (HTTPS)
+- Store API credentials securely
+- Implement proper error handling
+- Validate all user inputs
+
+## Getting Your API Credentials
+
+Once you have a merchant account, you can obtain your API credentials:
+
+1. Log in to your NPAY merchant dashboard
+2. Navigate to the **API** section
+3. Generate your **Client ID** and **Secret Key**
+4. Keep these credentials secure and confidential
+
+<Note>
+  Your API credentials are sensitive information. Never share them publicly or commit them to version control.
+</Note>
+
+## Next Steps
+
+Now that you have everything set up, you can proceed to:
+
+- [Authentication setup](/docs/authentication)
+- [Understanding base URLs](/docs/base-url)
+- [Getting your access token](/docs/api-reference/access-token)

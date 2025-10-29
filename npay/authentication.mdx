@@ -1,0 +1,68 @@
+---
+title: "Authentication"
+description: "Learn how to authenticate with the NPAY Payment Gateway API"
+---
+
+# Authentication
+
+To access the NPAY Payment Gateway API, you'll need to authenticate using your API credentials. The API uses OAuth2-style authentication with access tokens.
+
+## Getting Your API Credentials
+
+Before you can make API calls, you need to obtain your API credentials from your NPAY merchant account:
+
+1. **Log in** to your NPAY merchant dashboard
+2. **Navigate** to the API section
+3. **Collect** your **Client ID** (Primary Key) and **Secret Key**
+4. **Keep them secure** - these credentials are sensitive
+
+<Warning>
+  Keep your API credentials confidential and never share them publicly. Store them securely in environment variables or secure configuration files.
+</Warning>
+
+## Authentication Flow
+
+The NPAY API uses a two-step authentication process:
+
+1. **Get Access Token** - Use your Client ID and Secret Key to obtain an access token
+2. **Use Access Token** - Include the access token in subsequent API requests
+
+## Access Token
+
+The access token is a temporary credential that allows you to make authenticated API requests. It has the following characteristics:
+
+- **Expiration**: 600 seconds (10 minutes)
+- **Format**: JWT-style token
+- **Usage**: Include in the `Authorization` header
+
+## Security Best Practices
+
+<Checklist>
+  <ChecklistItem>
+    Store credentials in environment variables, not in your code
+  </ChecklistItem>
+  <ChecklistItem>
+    Use HTTPS for all API communications
+  </ChecklistItem>
+  <ChecklistItem>
+    Implement token refresh logic to handle expiration
+  </ChecklistItem>
+  <ChecklistItem>
+    Never log or expose API credentials
+  </ChecklistItem>
+  <ChecklistItem>
+    Rotate credentials regularly
+  </ChecklistItem>
+</Checklist>
+
+## Next Steps
+
+Now that you understand authentication, you can:
+
+- [Learn about base URLs](/docs/base-url)
+- [Get your access token](/docs/api-reference/access-token)
+- [Start making API calls](/docs/api-reference/initiate-payment)
+
+<Note>
+  If you don't have a merchant account yet, you can [register here](/merchant/register) to get started.
+</Note>

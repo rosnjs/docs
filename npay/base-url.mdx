@@ -1,0 +1,80 @@
+---
+title: "Base URL"
+description: "Understanding NPAY API endpoints and base URLs"
+---
+
+# Base URL
+
+The NPAY Payment Gateway API provides different base URLs for different environments. Choose the appropriate URL based on your integration needs.
+
+## API Endpoints
+
+### Production Environment
+
+Use this URL for live transactions with real money:
+
+```
+https://your-domain.com/pay/api/v1
+```
+
+### Sandbox Environment
+
+Use this URL for testing and development:
+
+```
+https://your-domain.com/pay/sandbox/api/v1
+```
+
+<Warning>
+  Always test your integration thoroughly in the sandbox environment before switching to production.
+</Warning>
+
+## Environment Selection
+
+### When to Use Sandbox
+
+- **Development and testing**
+- **Integration testing**
+- **Feature validation**
+- **Learning the API**
+
+### When to Use Production
+
+- **Live transactions**
+- **Real customer payments**
+- **Production-ready applications**
+
+## API Versioning
+
+The current API version is **v1**. All endpoints are prefixed with `/api/v1` or `/sandbox/api/v1`.
+
+## Complete Endpoint Examples
+
+### Authentication
+```
+POST /api/v1/authentication/token
+POST /sandbox/api/v1/authentication/token
+```
+
+### Payment Operations
+```
+POST /api/v1/payment/create
+POST /sandbox/api/v1/payment/create
+
+GET /api/v1/payment/status/{token}
+GET /sandbox/api/v1/payment/status/{token}
+```
+
+## HTTPS Requirement
+
+<Note>
+  All API requests must be made over HTTPS. HTTP requests will be rejected for security reasons.
+</Note>
+
+## Next Steps
+
+Now that you know the base URLs, you can:
+
+- [Get your access token](/docs/api-reference/access-token)
+- [Initiate payments](/docs/api-reference/initiate-payment)
+- [Check payment status](/docs/api-reference/check-payment-status)

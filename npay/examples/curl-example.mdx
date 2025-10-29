@@ -1,0 +1,437 @@
+---
+title: "cURL Integration Example"
+description: "Complete cURL examples for integrating with NPAY Payment Gateway"
+---
+
+# cURL Integration Example
+
+This example shows how to integrate the NPAY Payment Gateway API using cURL commands and scripts.
+
+## Prerequisites
+
+- cURL installed on your system
+- Basic knowledge of command line and HTTP requests
+
+## Basic cURL Commands
+
+### 1. Get Access Token
+
+```bash
+curl -X POST "https://your-domain.com/pay/sandbox/api/v1/authentication/token" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "client_id": "your_client_id_here",
+    "secret_id": "your_secret_key_here"
+  }'
+```
+
+**Response:**
+```json
+{
+  "message": {
+    "code": 200,
+    "success": ["SUCCESS"]
+  },
+  "data": {
+    "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+    "expire_time": 600
+  },
+  "type": "success"
+}
+```
+
+### 2. Create Payment
+
+```bash
+curl -X POST "https://your-domain.com/pay/sandbox/api/v1/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN_HERE" \
+  -d '{
+    "amount": "100.00",
+    "currency": "USD",
+    "return_url": "https://yoursite.com/success",
+    "cancel_url": "https://yoursite.com/cancel",
+    "custom": "ORDER_12345"
+  }'
+```
+
+**Response:**
+```json
+{
+  "message": {
+    "code": 200,
+    "success": ["CREATED"]
+  },
+  "data": {
+    "token": "2zMRmT3KeYT2BWMAyGhqEfuw4tOYOfGXKeyKqehZ8mF1E35hMwE69gPpyo3e",
+    "payment_url": "https://your-domain.com/pay/sandbox/v1/user/authentication/form/2zMRmT3KeYT2BWMAyGhqEfuw4tOYOfGXKeyKqehZ8mF1E35hMwE69gPpyo3e"
+  },
+  "type": "success"
+}
+```
+
+### 3. Check Payment Status
+
+```bash
+curl -X GET "https://your-domain.com/pay/sandbox/api/v1/payment/status/PAYMENT_TOKEN_HERE" \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN_HERE"
+```
+
+**Response:**
+```json
+{
+  "message": {
+    "code": 200,
+    "success": ["SUCCESS"]
+  },
+  "data": {
+    "token": "2zMRmT3KeYT2BWMAyGhqEfuw4tOYOfGXKeyKqehZ8mF1E35hMwE69gPpyo3e",
+    "trx_id": "BP2c7sAvw75MTlrP",
+    "payer": {
+      "username": "testuser",
+      "email": "user@example.com"
+    },
+    "custom": "ORDER_12345"
+  },
+  "type": "success"
+}
+```
+
+## Shell Script Examples
+
+### Complete Payment Flow Script
+
+```bash
+#!/bin/bash
+
+# Configuration
+CLIENT_ID="your_client_id_here"
+SECRET_KEY="your_secret_key_here"
+BASE_URL="https://your-domain.com/pay/sandbox/api/v1"
+AMOUNT="100.00"
+CURRENCY="USD"
+RETURN_URL="https://yoursite.com/success"
+CANCEL_URL="https://yoursite.com/cancel"
+CUSTOM="ORDER_$(date +%s)"
+
+echo "=== NPAY Payment Gateway Integration ==="
+echo "Amount: $AMOUNT $CURRENCY"
+echo "Return URL: $RETURN_URL"
+echo ""
+
+# Step 1: Get Access Token
+echo "1. Getting access token..."
+TOKEN_RESPONSE=$(curl -s -X POST "$BASE_URL/authentication/token" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d "{
+    \"client_id\": \"$CLIENT_ID\",
+    \"secret_id\": \"$SECRET_KEY\"
+  }")
+
+echo "Token Response: $TOKEN_RESPONSE"
+echo ""
+
+# Extract access token
+ACCESS_TOKEN=$(echo $TOKEN_RESPONSE | jq -r '.data.access_token')
+
+if [ "$ACCESS_TOKEN" = "null" ] || [ -z "$ACCESS_TOKEN" ]; then
+    echo "Error: Failed to get access token"
+    echo "Response: $TOKEN_RESPONSE"
+    exit 1
+fi
+
+echo "Access token obtained: ${ACCESS_TOKEN:0:20}..."
+echo ""
+
+# Step 2: Create Payment
+echo "2. Creating payment..."
+PAYMENT_RESPONSE=$(curl -s -X POST "$BASE_URL/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -d "{
+    \"amount\": \"$AMOUNT\",
+    \"currency\": \"$CURRENCY\",
+    \"return_url\": \"$RETURN_URL\",
+    \"cancel_url\": \"$CANCEL_URL\",
+    \"custom\": \"$CUSTOM\"
+  }")
+
+echo "Payment Response: $PAYMENT_RESPONSE"
+echo ""
+
+# Extract payment token and URL
+PAYMENT_TOKEN=$(echo $PAYMENT_RESPONSE | jq -r '.data.token')
+PAYMENT_URL=$(echo $PAYMENT_RESPONSE | jq -r '.data.payment_url')
+
+if [ "$PAYMENT_TOKEN" = "null" ] || [ -z "$PAYMENT_TOKEN" ]; then
+    echo "Error: Failed to create payment"
+    echo "Response: $PAYMENT_RESPONSE"
+    exit 1
+fi
+
+echo "Payment created successfully!"
+echo "Payment Token: $PAYMENT_TOKEN"
+echo "Payment URL: $PAYMENT_URL"
+echo ""
+
+# Step 3: Check Payment Status (simulate)
+echo "3. Checking payment status..."
+echo "Note: In a real scenario, you would check this after the customer completes payment"
+echo ""
+
+STATUS_RESPONSE=$(curl -s -X GET "$BASE_URL/payment/status/$PAYMENT_TOKEN" \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer $ACCESS_TOKEN")
+
+echo "Status Response: $STATUS_RESPONSE"
+echo ""
+
+echo "=== Integration Complete ==="
+echo "To test the payment, visit: $PAYMENT_URL"
+```
+
+### Error Handling Script
+
+```bash
+#!/bin/bash
+
+# Function to handle API errors
+handle_api_error() {
+    local response="$1"
+    local step="$2"
+    
+    local error_code=$(echo "$response" | jq -r '.message.code // 0')
+    local error_message=$(echo "$response" | jq -r '.message.error[0] // "Unknown error"')
+    
+    if [ "$error_code" != "200" ] && [ "$error_code" != "0" ]; then
+        echo "Error in $step:"
+        echo "Code: $error_code"
+        echo "Message: $error_message"
+        echo "Full Response: $response"
+        exit 1
+    fi
+}
+
+# Function to make API request with error handling
+make_api_request() {
+    local method="$1"
+    local url="$2"
+    local data="$3"
+    local headers="$4"
+    
+    local response=$(curl -s -X "$method" "$url" $headers -d "$data")
+    echo "$response"
+}
+
+# Example usage
+CLIENT_ID="your_client_id_here"
+SECRET_KEY="your_secret_key_here"
+BASE_URL="https://your-domain.com/pay/sandbox/api/v1"
+
+# Get access token with error handling
+echo "Getting access token..."
+TOKEN_RESPONSE=$(make_api_request "POST" "$BASE_URL/authentication/token" \
+  "{\"client_id\":\"$CLIENT_ID\",\"secret_id\":\"$SECRET_KEY\"}" \
+  "-H 'Content-Type: application/json' -H 'Accept: application/json'")
+
+handle_api_error "$TOKEN_RESPONSE" "authentication"
+
+ACCESS_TOKEN=$(echo $TOKEN_RESPONSE | jq -r '.data.access_token')
+echo "Access token obtained successfully!"
+```
+
+## JavaScript/Node.js cURL Equivalent
+
+```javascript
+const https = require('https');
+const querystring = require('querystring');
+
+class NpayClient {
+    constructor(clientId, secretKey, baseUrl) {
+        this.clientId = clientId;
+        this.secretKey = secretKey;
+        this.baseUrl = baseUrl;
+        this.accessToken = null;
+    }
+
+    async makeRequest(method, endpoint, data = null, headers = {}) {
+        return new Promise((resolve, reject) => {
+            const options = {
+                hostname: new URL(this.baseUrl).hostname,
+                port: 443,
+                path: new URL(this.baseUrl).pathname + endpoint,
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    ...headers
+                }
+            };
+
+            const req = https.request(options, (res) => {
+                let responseData = '';
+                
+                res.on('data', (chunk) => {
+                    responseData += chunk;
+                });
+                
+                res.on('end', () => {
+                    try {
+                        const parsed = JSON.parse(responseData);
+                        resolve(parsed);
+                    } catch (e) {
+                        reject(new Error('Invalid JSON response'));
+                    }
+                });
+            });
+
+            req.on('error', (e) => {
+                reject(e);
+            });
+
+            if (data) {
+                req.write(JSON.stringify(data));
+            }
+            
+            req.end();
+        });
+    }
+
+    async getAccessToken() {
+        const response = await this.makeRequest('POST', '/authentication/token', {
+            client_id: this.clientId,
+            secret_id: this.secretKey
+        });
+
+        if (response.message.code === 200) {
+            this.accessToken = response.data.access_token;
+            return this.accessToken;
+        } else {
+            throw new Error(response.message.error[0]);
+        }
+    }
+
+    async createPayment(amount, currency, returnUrl, cancelUrl = null, custom = null) {
+        if (!this.accessToken) {
+            await this.getAccessToken();
+        }
+
+        const paymentData = {
+            amount: amount.toString(),
+            currency: currency,
+            return_url: returnUrl
+        };
+
+        if (cancelUrl) paymentData.cancel_url = cancelUrl;
+        if (custom) paymentData.custom = custom;
+
+        const response = await this.makeRequest('POST', '/payment/create', paymentData, {
+            'Authorization': `Bearer ${this.accessToken}`
+        });
+
+        if (response.message.code === 200) {
+            return response.data;
+        } else {
+            throw new Error(response.message.error[0]);
+        }
+    }
+
+    async checkPaymentStatus(token) {
+        if (!this.accessToken) {
+            await this.getAccessToken();
+        }
+
+        const response = await this.makeRequest('GET', `/payment/status/${token}`, null, {
+            'Authorization': `Bearer ${this.accessToken}`
+        });
+
+        if (response.message.code === 200) {
+            return response.data;
+        } else {
+            throw new Error(response.message.error[0]);
+        }
+    }
+}
+
+// Usage example
+async function example() {
+    const client = new NpayClient(
+        'your_client_id_here',
+        'your_secret_key_here',
+        'https://your-domain.com/pay/sandbox/api/v1'
+    );
+
+    try {
+        // Create payment
+        const payment = await client.createPayment(
+            100.00,
+            'USD',
+            'https://yoursite.com/success',
+            'https://yoursite.com/cancel',
+            'ORDER_12345'
+        );
+
+        console.log('Payment created:', payment);
+        console.log('Payment URL:', payment.payment_url);
+
+        // Check status (in real app, this would be after customer returns)
+        const status = await client.checkPaymentStatus(payment.token);
+        console.log('Payment status:', status);
+
+    } catch (error) {
+        console.error('Error:', error.message);
+    }
+}
+
+example();
+```
+
+## Testing with Different Currencies
+
+```bash
+#!/bin/bash
+
+# Test multiple currencies
+CURRENCIES=("USD" "EUR" "GBP" "CAD" "AUD")
+AMOUNTS=("10.00" "25.50" "100.00" "250.75" "1000.00")
+
+for currency in "${CURRENCIES[@]}"; do
+    for amount in "${AMOUNTS[@]}"; do
+        echo "Testing $amount $currency..."
+        
+        # Your payment creation logic here
+        # ...
+        
+        echo "Completed $amount $currency test"
+        echo "---"
+    done
+done
+```
+
+## Production vs Sandbox
+
+```bash
+#!/bin/bash
+
+# Environment configuration
+if [ "$ENVIRONMENT" = "production" ]; then
+    BASE_URL="https://your-domain.com/pay/api/v1"
+    echo "Using PRODUCTION environment"
+else
+    BASE_URL="https://your-domain.com/pay/sandbox/api/v1"
+    echo "Using SANDBOX environment"
+fi
+
+# Rest of your script...
+```
+
+## Next Steps
+
+- [Check out PHP examples](/docs/examples/php-example)
+- [Learn about error handling](/docs/guides/error-handling)
+- [Review best practices](/docs/guides/best-practices)

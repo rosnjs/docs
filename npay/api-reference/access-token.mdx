@@ -1,0 +1,117 @@
+---
+title: "Get Access Token"
+description: "Obtain an access token to authenticate API requests"
+api: "POST /authentication/token"
+---
+
+# Get Access Token
+
+Get an access token to initiate payment transactions. This endpoint authenticates your API credentials and returns a temporary access token.
+
+<Note>
+  Access tokens expire after 600 seconds (10 minutes). Implement token refresh logic in your application.
+</Note>
+
+## Request
+
+<RequestExample>
+```php
+<?php
+require_once('vendor/autoload.php');
+$client = new \GuzzleHttp\Client();
+$response = $client->request('POST', '{{base_url}}/authentication/token', [
+    'json' => [
+        'client_id' => 'your_client_id_here',
+        'secret_id' => 'your_secret_key_here',
+    ],
+    'headers' => [
+        'accept' => 'application/json',
+        'content-type' => 'application/json',
+    ],
+]);
+echo $response->getBody();
+```
+</RequestExample>
+
+## Parameters
+
+<ParamField path="client_id" type="string" required>
+  Your merchant API client/primary key obtained from the merchant dashboard
+</ParamField>
+
+<ParamField path="secret_id" type="string" required>
+  Your merchant API secret key obtained from the merchant dashboard
+</ParamField>
+
+## Response
+
+### Success Response (200 OK)
+
+<ResponseField name="message" type="object">
+  <ResponseField name="code" type="number">200</ResponseField>
+  <ResponseField name="success" type="array">
+    <ResponseField name="0" type="string">SUCCESS</ResponseField>
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <ResponseField name="access_token" type="string">
+    JWT-style access token for authenticating subsequent requests
+  </ResponseField>
+  <ResponseField name="expire_time" type="number">
+    Token expiration time in seconds (600 seconds)
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="type" type="string">success</ResponseField>
+
+### Error Response (400 Bad Request)
+
+<ResponseField name="message" type="object">
+  <ResponseField name="code" type="number">400</ResponseField>
+  <ResponseField name="error" type="array">
+    <ResponseField name="0" type="string">Invalid secret ID</ResponseField>
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="data" type="array">[]</ResponseField>
+<ResponseField name="type" type="string">error</ResponseField>
+
+## Example Response
+
+```json
+{
+  "message": {
+    "code": 200,
+    "success": [
+      "SUCCESS"
+    ]
+  },
+  "data": {
+    "access_token": "nyXPO8Re5SXP1c5gMqHbW6DQ5BfQdbYGpuWVjEQAP76SUT7YfdngoFzDGSNHTvmzq8AjPRrCyzxzukrJvOlSSwtAPAqjvAQJdse4YOnlHasD3vg6EYg6qyKxSiHeXBoRluD2NbZzxN3sAYVqd9q1XCAl7oaW3BbJl2ktEQWBUuNYMZPQaDyNEGwxoY389TCNJvxVcroveYxPJkYANvnaxOy16aE9Qp6EBClSjvK17WR3cJupTXlUhgw9ddpv1gDSlbDJvzKutrQX7XJqwk1GW1Dm6aK4PTn1D4mvMVqiOqQKigTzcEi2KPQnkoM86ONw3X8SxttFOfesdSwxKJMXuQpdnFHOjo",
+    "expire_time": 600
+  },
+  "type": "success"
+}
+```
+
+## Error Codes
+
+<ErrorCode code="400" description="Invalid credentials">
+  The provided client_id or secret_id is invalid or incorrect
+</ErrorCode>
+
+<ErrorCode code="401" description="Unauthorized">
+  Missing or invalid authentication credentials
+</ErrorCode>
+
+<ErrorCode code="500" description="Internal Server Error">
+  An unexpected error occurred on the server
+</ErrorCode>
+
+## Next Steps
+
+After obtaining your access token, you can:
+
+- [Initiate a payment](/docs/api-reference/initiate-payment)
+- [Check payment status](/docs/api-reference/check-payment-status)

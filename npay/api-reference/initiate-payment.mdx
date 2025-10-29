@@ -1,0 +1,165 @@
+---
+title: "Initiate Payment"
+description: "Create a new payment transaction"
+api: "POST /payment/create"
+---
+
+# Initiate Payment
+
+Initiates a new payment transaction. This endpoint creates a payment request and returns a payment URL that customers can use to complete their payment.
+
+<Note>
+  You must include a valid access token in the Authorization header for this request.
+</Note>
+
+## Request
+
+<RequestExample>
+```php
+<?php
+require_once('vendor/autoload.php');
+$client = new \GuzzleHttp\Client();
+$response = $client->request('POST', '{{base_url}}/payment/create', [
+    'json' => [
+        'amount' => '100.00',
+        'currency' => 'USD',
+        'return_url' => 'https://www.example.com/success',
+        'cancel_url' => 'https://www.example.com/cancel',
+        'custom' => '123456789ABCD',
+    ],
+    'headers' => [
+        'Authorization' => 'Bearer {{access_token}}',
+        'accept' => 'application/json',
+        'content-type' => 'application/json',
+    ],
+]);
+echo $response->getBody();
+```
+</RequestExample>
+
+## Parameters
+
+<ParamField path="amount" type="decimal" required>
+  Payment amount. Must be rounded to 2 decimal places (e.g., 100.00)
+</ParamField>
+
+<ParamField path="currency" type="string" required>
+  Currency code in uppercase Alpha-3 format (e.g., USD, EUR, GBP)
+</ParamField>
+
+<ParamField path="return_url" type="string" required>
+  URL to redirect customers after successful payment
+</ParamField>
+
+<ParamField path="cancel_url" type="string">
+  URL to redirect customers if payment is cancelled or fails
+</ParamField>
+
+<ParamField path="custom" type="string">
+  Custom transaction ID for your internal tracking
+</ParamField>
+
+## Response
+
+### Success Response (200 OK)
+
+<ResponseField name="message" type="object">
+  <ResponseField name="code" type="number">200</ResponseField>
+  <ResponseField name="success" type="array">
+    <ResponseField name="0" type="string">CREATED</ResponseField>
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <ResponseField name="token" type="string">
+    Unique payment token for this transaction
+  </ResponseField>
+  <ResponseField name="payment_url" type="string">
+    URL where customers can complete the payment
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="type" type="string">success</ResponseField>
+
+### Error Response (403 Forbidden)
+
+<ResponseField name="message" type="object">
+  <ResponseField name="code" type="number">403</ResponseField>
+  <ResponseField name="error" type="array">
+    <ResponseField name="0" type="string">Requested with invalid token!</ResponseField>
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="data" type="array">[]</ResponseField>
+<ResponseField name="type" type="string">error</ResponseField>
+
+## Example Response
+
+```json
+{
+  "message": {
+    "code": 200,
+    "success": [
+      "CREATED"
+    ]
+  },
+  "data": {
+    "token": "2zMRmT3KeYT2BWMAyGhqEfuw4tOYOfGXKeyKqehZ8mF1E35hMwE69gPpyo3e",
+    "payment_url": "https://www.example.com/pay/sandbox/v1/user/authentication/form/2zMRmT3KeYT2BWMAyGhqEfuw4tOYOfGXKeyKqehZ8mF1E35hMwE69gPpyo3e"
+  },
+  "type": "success"
+}
+```
+
+## Supported Currencies
+
+The API supports various international currencies. Common currencies include:
+
+- **USD** - US Dollar
+- **EUR** - Euro
+- **GBP** - British Pound
+- **CAD** - Canadian Dollar
+- **AUD** - Australian Dollar
+- **JPY** - Japanese Yen
+
+<Note>
+  For a complete list of supported currencies, contact our support team.
+</Note>
+
+## Error Codes
+
+<ErrorCode code="400" description="Bad Request">
+  Invalid request parameters or missing required fields
+</ErrorCode>
+
+<ErrorCode code="401" description="Unauthorized">
+  Missing or invalid access token
+</ErrorCode>
+
+<ErrorCode code="403" description="Forbidden">
+  Invalid or expired access token
+</ErrorCode>
+
+<ErrorCode code="422" description="Unprocessable Entity">
+  Invalid currency code or amount format
+</ErrorCode>
+
+<ErrorCode code="500" description="Internal Server Error">
+  An unexpected error occurred on the server
+</ErrorCode>
+
+## Integration Flow
+
+1. **Get Access Token** - Authenticate and obtain an access token
+2. **Create Payment** - Call this endpoint with payment details
+3. **Redirect Customer** - Send customer to the returned payment URL
+4. **Handle Response** - Process the response from return_url or cancel_url
+5. **Check Status** - Verify payment status using the payment token
+
+## Next Steps
+
+After creating a payment, you can:
+
+- [Check payment status](/docs/api-reference/check-payment-status)
+- [Handle webhooks](/docs/guides/webhooks)
+- [Process refunds](/docs/api-reference/refund-payment)

@@ -1,0 +1,373 @@
+---
+title: "Response Codes"
+description: "Understanding HTTP status codes and API response formats"
+---
+
+# Response Codes
+
+The NPAY Payment Gateway API uses standard HTTP status codes to indicate the success or failure of requests. Understanding these codes is essential for proper error handling and integration.
+
+## HTTP Status Codes
+
+### Success Codes
+
+<ResponseCode code="200" description="OK">
+  Request was successful and data is returned
+</ResponseCode>
+
+### Client Error Codes
+
+<ResponseCode code="400" description="Bad Request">
+  The request was invalid or malformed
+</ResponseCode>
+
+<ResponseCode code="401" description="Unauthorized">
+  Authentication is required or failed
+</ResponseCode>
+
+<ResponseCode code="403" description="Forbidden">
+  Access is denied due to insufficient permissions
+</ResponseCode>
+
+<ResponseCode code="404" description="Not Found">
+  The requested resource was not found
+</ResponseCode>
+
+<ResponseCode code="422" description="Unprocessable Entity">
+  The request was well-formed but contains semantic errors
+</ResponseCode>
+
+<ResponseCode code="429" description="Too Many Requests">
+  Rate limit exceeded
+</ResponseCode>
+
+### Server Error Codes
+
+<ResponseCode code="500" description="Internal Server Error">
+  An unexpected error occurred on the server
+</ResponseCode>
+
+<ResponseCode code="502" description="Bad Gateway">
+  The server received an invalid response from an upstream server
+</ResponseCode>
+
+<ResponseCode code="503" description="Service Unavailable">
+  The service is temporarily unavailable
+</ResponseCode>
+
+<ResponseCode code="504" description="Gateway Timeout">
+  The server did not receive a timely response from an upstream server
+</ResponseCode>
+
+## Response Format
+
+All API responses follow a consistent format:
+
+### Success Response
+
+```json
+{
+  "message": {
+    "code": 200,
+    "success": [
+      "SUCCESS"
+    ]
+  },
+  "data": {
+    // Response data here
+  },
+  "type": "success"
+}
+```
+
+### Error Response
+
+```json
+{
+  "message": {
+    "code": 400,
+    "error": [
+      "Error description"
+    ]
+  },
+  "data": [],
+  "type": "error"
+}
+```
+
+## Common Response Scenarios
+
+### Authentication Success
+
+```json
+{
+  "message": {
+    "code": 200,
+    "success": [
+      "SUCCESS"
+    ]
+  },
+  "data": {
+    "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+    "expire_time": 600
+  },
+  "type": "success"
+}
+```
+
+### Payment Created Successfully
+
+```json
+{
+  "message": {
+    "code": 200,
+    "success": [
+      "CREATED"
+    ]
+  },
+  "data": {
+    "token": "2zMRmT3KeYT2BWMAyGhqEfuw4tOYOfGXKeyKqehZ8mF1E35hMwE69gPpyo3e",
+    "payment_url": "https://example.com/pay/2zMRmT3KeYT2BWMAyGhqEfuw4tOYOfGXKeyKqehZ8mF1E35hMwE69gPpyo3e"
+  },
+  "type": "success"
+}
+```
+
+### Payment Status Retrieved
+
+```json
+{
+  "message": {
+    "code": 200,
+    "success": [
+      "SUCCESS"
+    ]
+  },
+  "data": {
+    "token": "2zMRmT3KeYT2BWMAyGhqEfuw4tOYOfGXKeyKqehZ8mF1E35hMwE69gPpyo3e",
+    "trx_id": "BP2c7sAvw75MTlrP",
+    "payer": {
+      "username": "testuser",
+      "email": "user@example.com"
+    },
+    "custom": "123456789ABCD"
+  },
+  "type": "success"
+}
+```
+
+## Error Response Examples
+
+### Invalid Credentials (401)
+
+```json
+{
+  "message": {
+    "code": 401,
+    "error": [
+      "Invalid credentials"
+    ]
+  },
+  "data": [],
+  "type": "error"
+}
+```
+
+### Invalid Token (403)
+
+```json
+{
+  "message": {
+    "code": 403,
+    "error": [
+      "Requested with invalid token!"
+    ]
+  },
+  "data": [],
+  "type": "error"
+}
+```
+
+### Missing Required Field (400)
+
+```json
+{
+  "message": {
+    "code": 400,
+    "error": [
+      "The amount field is required"
+    ]
+  },
+  "data": [],
+  "type": "error"
+}
+```
+
+### Invalid Currency (422)
+
+```json
+{
+  "message": {
+    "code": 422,
+    "error": [
+      "The currency field must be a valid currency code"
+    ]
+  },
+  "data": [],
+  "type": "error"
+}
+```
+
+### Payment Not Found (404)
+
+```json
+{
+  "message": {
+    "code": 404,
+    "error": [
+      "Payment not found"
+    ]
+  },
+  "data": [],
+  "type": "error"
+}
+```
+
+## Handling Responses in Code
+
+### PHP Example
+
+```php
+function handleApiResponse($response) {
+    $statusCode = $response->getStatusCode();
+    $data = json_decode($response->getBody(), true);
+    
+    switch ($statusCode) {
+        case 200:
+            return [
+                'success' => true,
+                'data' => $data['data'],
+                'message' => $data['message']['success'][0] ?? 'Success'
+            ];
+            
+        case 400:
+        case 422:
+            return [
+                'success' => false,
+                'error' => $data['message']['error'][0] ?? 'Validation error',
+                'code' => $statusCode
+            ];
+            
+        case 401:
+        case 403:
+            return [
+                'success' => false,
+                'error' => 'Authentication failed',
+                'code' => $statusCode
+            ];
+            
+        case 404:
+            return [
+                'success' => false,
+                'error' => 'Resource not found',
+                'code' => $statusCode
+            ];
+            
+        case 429:
+            return [
+                'success' => false,
+                'error' => 'Rate limit exceeded',
+                'code' => $statusCode
+            ];
+            
+        default:
+            return [
+                'success' => false,
+                'error' => 'Unexpected error occurred',
+                'code' => $statusCode
+            ];
+    }
+}
+```
+
+### JavaScript Example
+
+```javascript
+function handleApiResponse(response) {
+    const statusCode = response.status;
+    const data = response.data;
+    
+    if (statusCode === 200) {
+        return {
+            success: true,
+            data: data.data,
+            message: data.message.success[0] || 'Success'
+        };
+    }
+    
+    if (statusCode >= 400 && statusCode < 500) {
+        return {
+            success: false,
+            error: data.message.error[0] || 'Client error',
+            code: statusCode
+        };
+    }
+    
+    if (statusCode >= 500) {
+        return {
+            success: false,
+            error: 'Server error',
+            code: statusCode
+        };
+    }
+    
+    return {
+        success: false,
+        error: 'Unknown error',
+        code: statusCode
+    };
+}
+```
+
+## Rate Limiting
+
+The API implements rate limiting to ensure fair usage:
+
+- **Rate Limit**: 100 requests per minute per API key
+- **Headers**: Rate limit information is included in response headers
+- **Retry-After**: When rate limited, a `Retry-After` header indicates when to retry
+
+```http
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 95
+X-RateLimit-Reset: 1640995200
+```
+
+## Best Practices
+
+<Checklist>
+  <ChecklistItem>
+    Always check the HTTP status code before processing response data
+  </ChecklistItem>
+  <ChecklistItem>
+    Handle all possible error codes in your application
+  </ChecklistItem>
+  <ChecklistItem>
+    Implement retry logic for 5xx server errors
+  </ChecklistItem>
+  <ChecklistItem>
+    Log errors with appropriate detail levels
+  </ChecklistItem>
+  <ChecklistItem>
+    Provide user-friendly error messages
+  </ChecklistItem>
+  <ChecklistItem>
+    Monitor API response codes for debugging
+  </ChecklistItem>
+</Checklist>
+
+## Next Steps
+
+- [Learn about error handling](/docs/guides/error-handling)
+- [Implement best practices](/docs/guides/best-practices)
+- [Set up monitoring](/docs/guides/monitoring)

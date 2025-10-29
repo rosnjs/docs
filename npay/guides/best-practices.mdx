@@ -1,0 +1,359 @@
+---
+title: "Best Practices"
+description: "Best practices for integrating with the NPAY Payment Gateway API"
+---
+
+# Best Practices
+
+Follow these best practices to ensure a smooth integration process and optimal performance with the NPAY Payment Gateway API.
+
+## Security Best Practices
+
+### 1. Use HTTPS for All Communications
+
+<Warning>
+  Always use secure HTTPS connections for all API requests. Never send sensitive data over unencrypted connections.
+</Warning>
+
+```php
+// ✅ Good - Use HTTPS
+$client = new \GuzzleHttp\Client([
+    'base_uri' => 'https://api.npay.com/',
+    'verify' => true // Verify SSL certificates
+]);
+
+// ❌ Bad - Never use HTTP
+$client = new \GuzzleHttp\Client([
+    'base_uri' => 'http://api.npay.com/' // Insecure!
+]);
+```
+
+### 2. Secure API Credentials
+
+Store your API credentials securely and never expose them in your code:
+
+```php
+// ✅ Good - Use environment variables
+$clientId = $_ENV['NPAY_CLIENT_ID'];
+$secretKey = $_ENV['NPAY_SECRET_KEY'];
+
+// ❌ Bad - Never hardcode credentials
+$clientId = 'your_client_id_here'; // Exposed in code!
+```
+
+### 3. Implement Token Refresh
+
+Access tokens expire after 600 seconds. Implement automatic token refresh:
+
+```php
+class NpayApiClient {
+    private $accessToken;
+    private $tokenExpiry;
+    
+    public function getAccessToken() {
+        if (!$this->accessToken || time() >= $this->tokenExpiry) {
+            $this->refreshAccessToken();
+        }
+        return $this->accessToken;
+    }
+    
+    private function refreshAccessToken() {
+        $response = $this->client->post('/authentication/token', [
+            'json' => [
+                'client_id' => $_ENV['NPAY_CLIENT_ID'],
+                'secret_id' => $_ENV['NPAY_SECRET_KEY']
+            ]
+        ]);
+        
+        $data = json_decode($response->getBody(), true);
+        $this->accessToken = $data['data']['access_token'];
+        $this->tokenExpiry = time() + $data['data']['expire_time'];
+    }
+}
+```
+
+## Error Handling Best Practices
+
+### 1. Implement Robust Error Handling
+
+Handle all possible error scenarios gracefully:
+
+```php
+function makeApiRequest($endpoint, $data) {
+    try {
+        $response = $client->post($endpoint, ['json' => $data]);
+        
+        if ($response->getStatusCode() === 200) {
+            return json_decode($response->getBody(), true);
+        }
+        
+        // Handle specific error codes
+        return handleApiError($response);
+        
+    } catch (ConnectException $e) {
+        // Network error
+        return ['error' => 'Network error. Please try again.'];
+    } catch (RequestException $e) {
+        // Request error
+        return ['error' => 'Request failed. Please try again.'];
+    } catch (Exception $e) {
+        // Unexpected error
+        return ['error' => 'An unexpected error occurred.'];
+    }
+}
+```
+
+### 2. Implement Retry Logic
+
+For transient errors, implement retry logic with exponential backoff:
+
+```php
+function retryWithBackoff($callback, $maxRetries = 3) {
+    $attempt = 0;
+    $delay = 1;
+    
+    while ($attempt < $maxRetries) {
+        try {
+            return $callback();
+        } catch (Exception $e) {
+            $attempt++;
+            if ($attempt >= $maxRetries) {
+                throw $e;
+            }
+            sleep($delay);
+            $delay *= 2; // Exponential backoff
+        }
+    }
+}
+```
+
+## Data Validation
+
+### 1. Validate Input Data
+
+Always validate input data before making API calls:
+
+```php
+function validatePaymentData($data) {
+    $errors = [];
+    
+    // Validate amount
+    if (!isset($data['amount']) || !is_numeric($data['amount'])) {
+        $errors[] = 'Amount must be a valid number';
+    } elseif ($data['amount'] <= 0) {
+        $errors[] = 'Amount must be greater than zero';
+    }
+    
+    // Validate currency
+    $supportedCurrencies = ['USD', 'EUR', 'GBP', 'CAD', 'AUD'];
+    if (!isset($data['currency']) || !in_array($data['currency'], $supportedCurrencies)) {
+        $errors[] = 'Currency not supported';
+    }
+    
+    // Validate URLs
+    if (!isset($data['return_url']) || !filter_var($data['return_url'], FILTER_VALIDATE_URL)) {
+        $errors[] = 'Return URL must be a valid URL';
+    }
+    
+    return $errors;
+}
+```
+
+### 2. Sanitize User Input
+
+Sanitize all user input to prevent injection attacks:
+
+```php
+function sanitizeInput($data) {
+    return [
+        'amount' => number_format((float)$data['amount'], 2, '.', ''),
+        'currency' => strtoupper(trim($data['currency'])),
+        'return_url' => filter_var($data['return_url'], FILTER_SANITIZE_URL),
+        'cancel_url' => filter_var($data['cancel_url'], FILTER_SANITIZE_URL),
+        'custom' => htmlspecialchars($data['custom'], ENT_QUOTES, 'UTF-8')
+    ];
+}
+```
+
+## Performance Optimization
+
+### 1. Cache Access Tokens
+
+Cache access tokens to avoid unnecessary authentication requests:
+
+```php
+class TokenCache {
+    private $cache;
+    
+    public function getToken() {
+        $token = $this->cache->get('npay_access_token');
+        if ($token && $token['expires_at'] > time()) {
+            return $token['access_token'];
+        }
+        return null;
+    }
+    
+    public function setToken($token, $expiresIn) {
+        $this->cache->set('npay_access_token', [
+            'access_token' => $token,
+            'expires_at' => time() + $expiresIn
+        ], $expiresIn);
+    }
+}
+```
+
+### 2. Use Connection Pooling
+
+Reuse HTTP connections for better performance:
+
+```php
+$client = new \GuzzleHttp\Client([
+    'base_uri' => 'https://api.npay.com/',
+    'timeout' => 30,
+    'connect_timeout' => 10,
+    'http_errors' => false
+]);
+```
+
+## Logging and Monitoring
+
+### 1. Implement Comprehensive Logging
+
+Log all API interactions for debugging and monitoring:
+
+```php
+function logApiCall($endpoint, $request, $response, $duration) {
+    $logData = [
+        'timestamp' => date('Y-m-d H:i:s'),
+        'endpoint' => $endpoint,
+        'request' => $request,
+        'response_code' => $response->getStatusCode(),
+        'duration' => $duration,
+        'success' => $response->getStatusCode() < 400
+    ];
+    
+    // Log to file or monitoring service
+    error_log(json_encode($logData));
+}
+```
+
+### 2. Monitor API Performance
+
+Track API performance metrics:
+
+```php
+function trackApiMetrics($endpoint, $duration, $success) {
+    $metrics = [
+        'endpoint' => $endpoint,
+        'duration' => $duration,
+        'success' => $success,
+        'timestamp' => time()
+    ];
+    
+    // Send to monitoring service
+    sendToMonitoring($metrics);
+}
+```
+
+## Testing Best Practices
+
+### 1. Test in Sandbox First
+
+Always test your integration in the sandbox environment:
+
+```php
+// Use sandbox URL for testing
+$baseUrl = $_ENV['APP_ENV'] === 'production' 
+    ? 'https://api.npay.com/pay/api/v1'
+    : 'https://api.npay.com/pay/sandbox/api/v1';
+```
+
+### 2. Mock API Responses
+
+Use mocking for unit tests:
+
+```php
+function mockApiResponse($statusCode, $data) {
+    return new MockResponse($statusCode, [
+        'Content-Type' => 'application/json'
+    ], json_encode($data));
+}
+```
+
+### 3. Test Error Scenarios
+
+Test all error scenarios:
+
+```php
+function testErrorScenarios() {
+    // Test invalid credentials
+    testInvalidCredentials();
+    
+    // Test invalid parameters
+    testInvalidParameters();
+    
+    // Test server errors
+    testServerErrors();
+    
+    // Test network timeouts
+    testNetworkTimeouts();
+}
+```
+
+## Security Checklist
+
+<Checklist>
+  <ChecklistItem>
+    Use HTTPS for all API communications
+  </ChecklistItem>
+  <ChecklistItem>
+    Store API credentials in environment variables
+  </ChecklistItem>
+  <ChecklistItem>
+    Implement token refresh logic
+  </ChecklistItem>
+  <ChecklistItem>
+    Validate all input data
+  </ChecklistItem>
+  <ChecklistItem>
+    Sanitize user input
+  </ChecklistItem>
+  <ChecklistItem>
+    Implement rate limiting on your side
+  </ChecklistItem>
+  <ChecklistItem>
+    Log security events
+  </ChecklistItem>
+  <ChecklistItem>
+    Regularly update dependencies
+  </ChecklistItem>
+</Checklist>
+
+## Performance Checklist
+
+<Checklist>
+  <ChecklistItem>
+    Cache access tokens
+  </ChecklistItem>
+  <ChecklistItem>
+    Use connection pooling
+  </ChecklistItem>
+  <ChecklistItem>
+    Implement retry logic
+  </ChecklistItem>
+  <ChecklistItem>
+    Monitor API performance
+  </ChecklistItem>
+  <ChecklistItem>
+    Optimize database queries
+  </ChecklistItem>
+  <ChecklistItem>
+    Use CDN for static assets
+  </ChecklistItem>
+</Checklist>
+
+## Next Steps
+
+- [Learn about error handling](/docs/guides/error-handling)
+- [Understand response codes](/docs/guides/response-codes)
+- [Check out examples](/docs/examples/php-example)

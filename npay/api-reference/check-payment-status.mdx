@@ -1,0 +1,197 @@
+---
+title: "Check Payment Status"
+description: "Check the status of a payment transaction"
+api: "GET /payment/status/{token}"
+---
+
+# Check Payment Status
+
+Check the current status of a payment transaction using the payment token returned from the initiate payment endpoint.
+
+<Note>
+  This endpoint allows you to verify payment completion and retrieve transaction details.
+</Note>
+
+## Request
+
+<RequestExample>
+```php
+<?php
+require_once('vendor/autoload.php');
+$client = new \GuzzleHttp\Client();
+$response = $client->request('GET', '{{base_url}}/payment/status/2zMRmT3KeYT2BWMAyGhqEfuw4tOYOfGXKeyKqehZ8mF1E35hMwE69gPpyo3e', [
+    'headers' => [
+        'Authorization' => 'Bearer {{access_token}}',
+        'accept' => 'application/json',
+    ],
+]);
+echo $response->getBody();
+```
+</RequestExample>
+
+## Parameters
+
+<ParamField path="token" type="string" required>
+  The payment token returned from the initiate payment endpoint
+</ParamField>
+
+## Response
+
+### Success Response (200 OK)
+
+<ResponseField name="message" type="object">
+  <ResponseField name="code" type="number">200</ResponseField>
+  <ResponseField name="success" type="array">
+    <ResponseField name="0" type="string">SUCCESS</ResponseField>
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <ResponseField name="token" type="string">
+    The payment token
+  </ResponseField>
+  <ResponseField name="trx_id" type="string">
+    Internal transaction ID
+  </ResponseField>
+  <ResponseField name="payer" type="object">
+    <ResponseField name="username" type="string">
+      Payer's username
+    </ResponseField>
+    <ResponseField name="email" type="string">
+      Payer's email address
+    </ResponseField>
+  </ResponseField>
+  <ResponseField name="custom" type="string">
+    Custom transaction ID provided during payment creation
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="type" type="string">success</ResponseField>
+
+### Error Response (404 Not Found)
+
+<ResponseField name="message" type="object">
+  <ResponseField name="code" type="number">404</ResponseField>
+  <ResponseField name="error" type="array">
+    <ResponseField name="0" type="string">Payment not found</ResponseField>
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="data" type="array">[]</ResponseField>
+<ResponseField name="type" type="string">error</ResponseField>
+
+## Example Response
+
+```json
+{
+  "message": {
+    "code": 200,
+    "success": [
+      "SUCCESS"
+    ]
+  },
+  "data": {
+    "token": "2zMRmT3KeYT2BWMAyGhqEfuw4tOYOfGXKeyKqehZ8mF1E35hMwE69gPpyo3e",
+    "trx_id": "BP2c7sAvw75MTlrP",
+    "payer": {
+      "username": "testuser",
+      "email": "user@nzoko.com"
+    },
+    "custom": "123456789ABCD"
+  },
+  "type": "success"
+}
+```
+
+## Payment Statuses
+
+The payment can have different statuses:
+
+- **Pending** - Payment is being processed
+- **Completed** - Payment was successful
+- **Failed** - Payment failed
+- **Cancelled** - Payment was cancelled by the user
+- **Expired** - Payment token has expired
+
+## Error Codes
+
+<ErrorCode code="400" description="Bad Request">
+  Invalid payment token format
+</ErrorCode>
+
+<ErrorCode code="401" description="Unauthorized">
+  Missing or invalid access token
+</ErrorCode>
+
+<ErrorCode code="403" description="Forbidden">
+  Invalid or expired access token
+</ErrorCode>
+
+<ErrorCode code="404" description="Not Found">
+  Payment token not found or invalid
+</ErrorCode>
+
+<ErrorCode code="500" description="Internal Server Error">
+  An unexpected error occurred on the server
+</ErrorCode>
+
+## Use Cases
+
+### Verify Payment Completion
+
+After a customer completes payment, use this endpoint to verify the transaction was successful:
+
+```php
+// Check if payment was completed
+$status = checkPaymentStatus($paymentToken);
+if ($status['data']['status'] === 'completed') {
+    // Process successful payment
+    processOrder($orderId);
+}
+```
+
+### Retrieve Transaction Details
+
+Get detailed information about a completed payment:
+
+```php
+$paymentDetails = getPaymentStatus($paymentToken);
+$transactionId = $paymentDetails['data']['trx_id'];
+$payerEmail = $paymentDetails['data']['payer']['email'];
+```
+
+### Handle Webhook Verification
+
+Verify webhook notifications by checking payment status:
+
+```php
+// Verify webhook data
+$webhookToken = $_POST['token'];
+$paymentStatus = checkPaymentStatus($webhookToken);
+// Process based on status
+```
+
+## Best Practices
+
+<Checklist>
+  <ChecklistItem>
+    Check payment status after customer returns from payment page
+  </ChecklistItem>
+  <ChecklistItem>
+    Implement retry logic for failed status checks
+  </ChecklistItem>
+  <ChecklistItem>
+    Store payment tokens securely for future reference
+  </ChecklistItem>
+  <ChecklistItem>
+    Handle all possible payment statuses in your application
+  </ChecklistItem>
+</Checklist>
+
+## Next Steps
+
+After checking payment status, you can:
+
+- [Process successful payments](/docs/guides/payment-processing)
+- [Handle failed payments](/docs/guides/error-handling)
+- [Set up webhooks](/docs/guides/webhooks)

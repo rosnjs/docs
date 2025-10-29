@@ -1,0 +1,403 @@
+---
+title: "PHP Integration Example"
+description: "Complete PHP example for integrating with NPAY Payment Gateway"
+---
+
+# PHP Integration Example
+
+This example shows how to integrate the NPAY Payment Gateway API using PHP with Guzzle HTTP client.
+
+## Prerequisites
+
+- PHP 7.4 or higher
+- Composer for dependency management
+- Guzzle HTTP client
+
+## Installation
+
+Install the required dependencies:
+
+```bash
+composer require guzzlehttp/guzzle
+```
+
+## Complete Integration Class
+
+```php
+<?php
+
+require_once 'vendor/autoload.php';
+
+class NpayPaymentGateway
+{
+    private $client;
+    private $baseUrl;
+    private $clientId;
+    private $secretKey;
+    private $accessToken;
+    private $tokenExpiry;
+
+    public function __construct($clientId, $secretKey, $isProduction = false)
+    {
+        $this->clientId = $clientId;
+        $this->secretKey = $secretKey;
+        $this->baseUrl = $isProduction 
+            ? 'https://your-domain.com/pay/api/v1'
+            : 'https://your-domain.com/pay/sandbox/api/v1';
+            
+        $this->client = new \GuzzleHttp\Client([
+            'base_uri' => $this->baseUrl,
+            'timeout' => 30,
+            'connect_timeout' => 10,
+            'http_errors' => false
+        ]);
+    }
+
+    /**
+     * Get access token for API authentication
+     */
+    public function getAccessToken()
+    {
+        if ($this->accessToken && time() < $this->tokenExpiry) {
+            return $this->accessToken;
+        }
+
+        try {
+            $response = $this->client->post('/authentication/token', [
+                'json' => [
+                    'client_id' => $this->clientId,
+                    'secret_id' => $this->secretKey
+                ],
+                'headers' => [
+                    'accept' => 'application/json',
+                    'content-type' => 'application/json'
+                ]
+            ]);
+
+            $data = $this->handleResponse($response);
+            
+            if ($data['success']) {
+                $this->accessToken = $data['data']['access_token'];
+                $this->tokenExpiry = time() + $data['data']['expire_time'];
+                return $this->accessToken;
+            }
+            
+            throw new Exception($data['error'] ?? 'Failed to get access token');
+            
+        } catch (Exception $e) {
+            throw new Exception('Authentication failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Create a new payment
+     */
+    public function createPayment($amount, $currency, $returnUrl, $cancelUrl = null, $custom = null)
+    {
+        $this->getAccessToken(); // Ensure we have a valid token
+
+        $paymentData = [
+            'amount' => number_format((float)$amount, 2, '.', ''),
+            'currency' => strtoupper($currency),
+            'return_url' => $returnUrl
+        ];
+
+        if ($cancelUrl) {
+            $paymentData['cancel_url'] = $cancelUrl;
+        }
+
+        if ($custom) {
+            $paymentData['custom'] = $custom;
+        }
+
+        try {
+            $response = $this->client->post('/payment/create', [
+                'json' => $paymentData,
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->accessToken,
+                    'accept' => 'application/json',
+                    'content-type' => 'application/json'
+                ]
+            ]);
+
+            return $this->handleResponse($response);
+            
+        } catch (Exception $e) {
+            throw new Exception('Payment creation failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Check payment status
+     */
+    public function checkPaymentStatus($token)
+    {
+        $this->getAccessToken(); // Ensure we have a valid token
+
+        try {
+            $response = $this->client->get('/payment/status/' . $token, [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->accessToken,
+                    'accept' => 'application/json'
+                ]
+            ]);
+
+            return $this->handleResponse($response);
+            
+        } catch (Exception $e) {
+            throw new Exception('Payment status check failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Handle API response
+     */
+    private function handleResponse($response)
+    {
+        $statusCode = $response->getStatusCode();
+        $data = json_decode($response->getBody(), true);
+
+        if ($statusCode === 200) {
+            return [
+                'success' => true,
+                'data' => $data['data'],
+                'message' => $data['message']['success'][0] ?? 'Success'
+            ];
+        }
+
+        $errorMessage = $data['message']['error'][0] ?? 'Unknown error';
+        
+        return [
+            'success' => false,
+            'error' => $errorMessage,
+            'code' => $statusCode
+        ];
+    }
+}
+```
+
+## Usage Examples
+
+### Basic Payment Creation
+
+```php
+<?php
+
+// Initialize the payment gateway
+$npay = new NpayPaymentGateway(
+    'your_client_id_here',
+    'your_secret_key_here',
+    false // Set to true for production
+);
+
+try {
+    // Create a payment
+    $result = $npay->createPayment(
+        100.00,                    // Amount
+        'USD',                     // Currency
+        'https://yoursite.com/success',  // Return URL
+        'https://yoursite.com/cancel',   // Cancel URL
+        'ORDER_12345'              // Custom transaction ID
+    );
+
+    if ($result['success']) {
+        // Redirect customer to payment URL
+        header('Location: ' . $result['data']['payment_url']);
+        exit;
+    } else {
+        echo 'Payment creation failed: ' . $result['error'];
+    }
+    
+} catch (Exception $e) {
+    echo 'Error: ' . $e->getMessage();
+}
+```
+
+### Payment Status Check
+
+```php
+<?php
+
+$npay = new NpayPaymentGateway(
+    'your_client_id_here',
+    'your_secret_key_here',
+    false
+);
+
+try {
+    // Check payment status
+    $result = $npay->checkPaymentStatus('payment_token_here');
+    
+    if ($result['success']) {
+        $paymentData = $result['data'];
+        echo 'Payment Status: ' . $paymentData['status'] . PHP_EOL;
+        echo 'Transaction ID: ' . $paymentData['trx_id'] . PHP_EOL;
+        echo 'Payer Email: ' . $paymentData['payer']['email'] . PHP_EOL;
+    } else {
+        echo 'Status check failed: ' . $result['error'];
+    }
+    
+} catch (Exception $e) {
+    echo 'Error: ' . $e->getMessage();
+}
+```
+
+### Complete Payment Flow
+
+```php
+<?php
+
+class PaymentController
+{
+    private $npay;
+
+    public function __construct()
+    {
+        $this->npay = new NpayPaymentGateway(
+            $_ENV['NPAY_CLIENT_ID'],
+            $_ENV['NPAY_SECRET_KEY'],
+            $_ENV['APP_ENV'] === 'production'
+        );
+    }
+
+    public function initiatePayment()
+    {
+        // Validate input
+        $amount = $_POST['amount'] ?? 0;
+        $currency = $_POST['currency'] ?? 'USD';
+        
+        if ($amount <= 0) {
+            return $this->errorResponse('Invalid amount');
+        }
+
+        try {
+            // Create payment
+            $result = $this->npay->createPayment(
+                $amount,
+                $currency,
+                'https://yoursite.com/payment/success',
+                'https://yoursite.com/payment/cancel',
+                'ORDER_' . time()
+            );
+
+            if ($result['success']) {
+                // Store payment token in session
+                $_SESSION['payment_token'] = $result['data']['token'];
+                
+                // Redirect to payment page
+                header('Location: ' . $result['data']['payment_url']);
+                exit;
+            } else {
+                return $this->errorResponse($result['error']);
+            }
+            
+        } catch (Exception $e) {
+            return $this->errorResponse('Payment initiation failed: ' . $e->getMessage());
+        }
+    }
+
+    public function handlePaymentReturn()
+    {
+        $token = $_SESSION['payment_token'] ?? null;
+        
+        if (!$token) {
+            return $this->errorResponse('No payment token found');
+        }
+
+        try {
+            // Check payment status
+            $result = $this->npay->checkPaymentStatus($token);
+            
+            if ($result['success']) {
+                $paymentData = $result['data'];
+                
+                if ($paymentData['status'] === 'completed') {
+                    // Payment successful
+                    $this->processSuccessfulPayment($paymentData);
+                    return $this->successResponse('Payment completed successfully');
+                } else {
+                    // Payment failed or pending
+                    return $this->errorResponse('Payment not completed');
+                }
+            } else {
+                return $this->errorResponse($result['error']);
+            }
+            
+        } catch (Exception $e) {
+            return $this->errorResponse('Payment verification failed: ' . $e->getMessage());
+        }
+    }
+
+    private function processSuccessfulPayment($paymentData)
+    {
+        // Update your database
+        // Send confirmation email
+        // Update order status
+        // etc.
+    }
+
+    private function successResponse($message)
+    {
+        return ['success' => true, 'message' => $message];
+    }
+
+    private function errorResponse($message)
+    {
+        return ['success' => false, 'error' => $message];
+    }
+}
+```
+
+## Error Handling
+
+```php
+<?php
+
+function handlePaymentError($e)
+{
+    // Log the error
+    error_log('Payment Error: ' . $e->getMessage());
+    
+    // Determine user-friendly message
+    if (strpos($e->getMessage(), 'Authentication failed') !== false) {
+        return 'Payment service is temporarily unavailable. Please try again later.';
+    } elseif (strpos($e->getMessage(), 'Invalid credentials') !== false) {
+        return 'Payment configuration error. Please contact support.';
+    } else {
+        return 'An unexpected error occurred. Please try again.';
+    }
+}
+```
+
+## Environment Configuration
+
+Create a `.env` file:
+
+```env
+NPAY_CLIENT_ID=your_client_id_here
+NPAY_SECRET_KEY=your_secret_key_here
+APP_ENV=development
+```
+
+## Testing
+
+```php
+<?php
+
+// Test in sandbox mode
+$npay = new NpayPaymentGateway(
+    'test_client_id',
+    'test_secret_key',
+    false // Sandbox mode
+);
+
+// Test payment creation
+$result = $npay->createPayment(10.00, 'USD', 'https://test.com/success');
+var_dump($result);
+```
+
+## Next Steps
+
+- [Check out cURL examples](/docs/examples/curl-example)
+- [Learn about error handling](/docs/guides/error-handling)
+- [Review best practices](/docs/guides/best-practices)

@@ -1,0 +1,200 @@
+---
+title: "Frequently Asked Questions"
+description: "Common questions and answers about the NPAY Payment Gateway API"
+---
+
+# Frequently Asked Questions
+
+## General Questions
+
+### What is NPAY Payment Gateway?
+
+NPAY is a comprehensive payment gateway solution that provides secure, reliable, and easy-to-integrate payment processing capabilities for your applications. It supports multiple currencies and payment methods, allowing you to accept payments from customers worldwide.
+
+### How do I get started with NPAY API?
+
+To get started with the NPAY API:
+
+1. **Register** for a merchant account
+2. **Obtain** your API credentials (Client ID and Secret Key)
+3. **Choose** your integration method (PHP, cURL, etc.)
+4. **Test** in sandbox environment
+5. **Deploy** to production
+
+### What currencies are supported?
+
+NPAY supports various international currencies including USD, EUR, GBP, CAD, AUD, JPY, and many more. For a complete list of supported currencies, contact our support team.
+
+### Is there a sandbox environment for testing?
+
+Yes! NPAY provides a sandbox environment for testing your integration. Use the sandbox base URL: `https://your-domain.com/pay/sandbox/api/v1` for all testing purposes.
+
+## Authentication & Security
+
+### How do I get my API credentials?
+
+1. Log in to your NPAY merchant dashboard
+2. Navigate to the **API** section
+3. Generate your **Client ID** and **Secret Key**
+4. Keep these credentials secure and confidential
+
+### How long do access tokens last?
+
+Access tokens expire after **600 seconds (10 minutes)**. Implement token refresh logic in your application to handle expiration automatically.
+
+### Is the API secure?
+
+Yes, the NPAY API uses:
+- **HTTPS** for all communications
+- **OAuth2-style** authentication
+- **JWT tokens** for access control
+- **Rate limiting** to prevent abuse
+
+### Can I use HTTP instead of HTTPS?
+
+No. All API communications must use HTTPS for security reasons. HTTP requests will be rejected.
+
+## Payment Processing
+
+### How do I create a payment?
+
+Use the `/payment/create` endpoint with the following parameters:
+- `amount` - Payment amount (decimal, 2 decimal places)
+- `currency` - Currency code (uppercase, Alpha-3)
+- `return_url` - Success redirect URL
+- `cancel_url` - Cancel redirect URL (optional)
+- `custom` - Custom transaction ID (optional)
+
+### How do I check payment status?
+
+Use the `/payment/status/{token}` endpoint with the payment token returned from the create payment response.
+
+### What happens after a customer completes payment?
+
+After payment completion:
+1. Customer is redirected to your `return_url`
+2. You can check payment status using the payment token
+3. Process the payment result in your application
+
+### Can I process refunds?
+
+Refund functionality is available through our merchant dashboard or by contacting support. API endpoints for refunds may be available in future updates.
+
+## Technical Questions
+
+### What HTTP methods are supported?
+
+The NPAY API supports:
+- **POST** - Create resources (tokens, payments)
+- **GET** - Retrieve resources (payment status)
+
+### What response formats are supported?
+
+All API responses are in **JSON** format with a consistent structure.
+
+### Is there rate limiting?
+
+Yes, the API has rate limiting:
+- **100 requests per minute** per API key
+- Rate limit headers are included in responses
+- `Retry-After` header indicates when to retry
+
+### What are the common error codes?
+
+Common error codes include:
+- **200** - Success
+- **400** - Bad Request
+- **401** - Unauthorized
+- **403** - Forbidden
+- **404** - Not Found
+- **422** - Unprocessable Entity
+- **500** - Internal Server Error
+
+### How do I handle errors?
+
+Implement proper error handling by:
+1. Checking HTTP status codes
+2. Parsing error messages from responses
+3. Implementing retry logic for transient errors
+4. Providing user-friendly error messages
+
+## Integration Questions
+
+### Do you provide SDKs?
+
+Currently, we provide code examples in PHP and cURL. SDKs for other languages may be available in the future.
+
+### Can I integrate with mobile apps?
+
+Yes! The NPAY API can be integrated with mobile applications using standard HTTP libraries available in most mobile development frameworks.
+
+### Do you support webhooks?
+
+Webhook support is available. Contact our support team for webhook configuration and documentation.
+
+### How do I test my integration?
+
+1. Use the **sandbox environment** for testing
+2. Test all error scenarios
+3. Verify payment flows end-to-end
+4. Test with different currencies and amounts
+
+## Troubleshooting
+
+### I'm getting "Invalid credentials" error
+
+This usually means:
+- Your Client ID or Secret Key is incorrect
+- You're using the wrong environment (sandbox vs production)
+- Your credentials have been regenerated
+
+### I'm getting "Invalid token" error
+
+This means:
+- Your access token has expired (tokens last 10 minutes)
+- The token format is incorrect
+- You need to get a new access token
+
+### Payment creation is failing
+
+Check:
+- All required parameters are provided
+- Amount is properly formatted (2 decimal places)
+- Currency code is uppercase and valid
+- URLs are properly formatted
+- You have a valid access token
+
+### I can't check payment status
+
+Ensure:
+- You're using the correct payment token
+- The token hasn't expired
+- You have a valid access token
+- The payment exists
+
+## Support
+
+### How can I get help?
+
+- **Documentation** - Check our comprehensive API documentation
+- **Support Team** - Contact us through the support portal
+- **GitHub** - Check our example repository for code samples
+
+### What information should I include when contacting support?
+
+When contacting support, include:
+- Your merchant account details
+- Error messages you're seeing
+- Code snippets (if applicable)
+- Steps to reproduce the issue
+- Environment (sandbox or production)
+
+### Is there a community forum?
+
+Yes! Join our developer community for discussions, tips, and updates.
+
+## Next Steps
+
+- [Get started with integration](/docs/getting-started)
+- [Check out code examples](/docs/examples/php-example)
+- [Contact support](/docs/support)

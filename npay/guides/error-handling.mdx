@@ -1,0 +1,306 @@
+---
+title: "Error Handling"
+description: "Best practices for handling errors in the NPAY Payment Gateway API"
+---
+
+# Error Handling
+
+Proper error handling is crucial for a robust payment integration. This guide covers how to handle errors gracefully and provide a good user experience.
+
+## Understanding API Errors
+
+The NPAY API returns errors in a consistent format with specific error codes and messages. All error responses follow this structure:
+
+```json
+{
+  "message": {
+    "code": 400,
+    "error": [
+      "Error description"
+    ]
+  },
+  "data": [],
+  "type": "error"
+}
+```
+
+## Common Error Scenarios
+
+### Authentication Errors
+
+<ErrorCode code="401" description="Unauthorized">
+  Missing or invalid access token
+</ErrorCode>
+
+<ErrorCode code="403" description="Forbidden">
+  Invalid or expired access token
+</ErrorCode>
+
+**How to handle:**
+```php
+if ($response->getStatusCode() === 401 || $response->getStatusCode() === 403) {
+    // Refresh access token
+    $newToken = getNewAccessToken();
+    // Retry the request with new token
+    retryRequest($newToken);
+}
+```
+
+### Validation Errors
+
+<ErrorCode code="400" description="Bad Request">
+  Invalid request parameters or missing required fields
+</ErrorCode>
+
+<ErrorCode code="422" description="Unprocessable Entity">
+  Invalid currency code or amount format
+</ErrorCode>
+
+**How to handle:**
+```php
+if ($response->getStatusCode() === 400 || $response->getStatusCode() === 422) {
+    $errorData = json_decode($response->getBody(), true);
+    $errors = $errorData['message']['error'];
+    
+    // Display user-friendly error messages
+    foreach ($errors as $error) {
+        showErrorToUser($error);
+    }
+}
+```
+
+### Server Errors
+
+<ErrorCode code="500" description="Internal Server Error">
+  An unexpected error occurred on the server
+</ErrorCode>
+
+<ErrorCode code="503" description="Service Unavailable">
+  The service is temporarily unavailable
+</ErrorCode>
+
+**How to handle:**
+```php
+if ($response->getStatusCode() >= 500) {
+    // Log the error for debugging
+    logError("Server error: " . $response->getBody());
+    
+    // Show generic error to user
+    showErrorToUser("Payment service is temporarily unavailable. Please try again later.");
+    
+    // Implement retry logic with exponential backoff
+    retryWithBackoff($request, $maxRetries = 3);
+}
+```
+
+## Error Handling Best Practices
+
+### 1. Implement Retry Logic
+
+For transient errors (5xx), implement retry logic with exponential backoff:
+
+```php
+function retryWithBackoff($request, $maxRetries = 3) {
+    $attempt = 0;
+    $delay = 1; // seconds
+    
+    while ($attempt < $maxRetries) {
+        try {
+            $response = makeRequest($request);
+            if ($response->getStatusCode() < 500) {
+                return $response;
+            }
+        } catch (Exception $e) {
+            // Log error
+        }
+        
+        $attempt++;
+        sleep($delay);
+        $delay *= 2; // Exponential backoff
+    }
+    
+    throw new Exception("Max retries exceeded");
+}
+```
+
+### 2. Validate Input Before Sending
+
+Always validate input data before making API calls:
+
+```php
+function validatePaymentData($data) {
+    $errors = [];
+    
+    // Validate amount
+    if (!isset($data['amount']) || !is_numeric($data['amount'])) {
+        $errors[] = "Amount must be a valid number";
+    }
+    
+    // Validate currency
+    if (!isset($data['currency']) || !in_array($data['currency'], $supportedCurrencies)) {
+        $errors[] = "Currency not supported";
+    }
+    
+    // Validate URLs
+    if (!isset($data['return_url']) || !filter_var($data['return_url'], FILTER_VALIDATE_URL)) {
+        $errors[] = "Return URL must be a valid URL";
+    }
+    
+    return $errors;
+}
+```
+
+### 3. Log Errors Appropriately
+
+Log errors with appropriate detail levels:
+
+```php
+function logError($message, $context = []) {
+    $logData = [
+        'timestamp' => date('Y-m-d H:i:s'),
+        'message' => $message,
+        'context' => $context,
+        'level' => 'error'
+    ];
+    
+    // Log to file or monitoring service
+    error_log(json_encode($logData));
+}
+```
+
+### 4. Provide User-Friendly Messages
+
+Convert technical error messages to user-friendly ones:
+
+```php
+function getUserFriendlyMessage($errorCode, $technicalMessage) {
+    $userMessages = [
+        400 => "Please check your payment details and try again.",
+        401 => "Authentication failed. Please contact support.",
+        403 => "Access denied. Please contact support.",
+        404 => "Payment not found. Please try again.",
+        422 => "Invalid payment information. Please check your details.",
+        500 => "Payment service is temporarily unavailable. Please try again later."
+    ];
+    
+    return $userMessages[$errorCode] ?? "An unexpected error occurred. Please try again.";
+}
+```
+
+## Error Monitoring
+
+### Set Up Monitoring
+
+Monitor API errors to identify issues quickly:
+
+```php
+function monitorApiErrors($response) {
+    if ($response->getStatusCode() >= 400) {
+        // Send alert to monitoring service
+        sendAlert([
+            'type' => 'api_error',
+            'status_code' => $response->getStatusCode(),
+            'response' => $response->getBody(),
+            'timestamp' => time()
+        ]);
+    }
+}
+```
+
+### Track Error Rates
+
+Monitor error rates to identify patterns:
+
+```php
+function trackErrorRate($endpoint, $statusCode) {
+    $errorRate = getErrorRate($endpoint);
+    
+    if ($errorRate > 0.1) { // 10% error rate threshold
+        sendAlert([
+            'type' => 'high_error_rate',
+            'endpoint' => $endpoint,
+            'error_rate' => $errorRate
+        ]);
+    }
+}
+```
+
+## Testing Error Scenarios
+
+### Test Different Error Conditions
+
+```php
+function testErrorHandling() {
+    // Test invalid credentials
+    testInvalidCredentials();
+    
+    // Test invalid parameters
+    testInvalidParameters();
+    
+    // Test server errors
+    testServerErrors();
+    
+    // Test network timeouts
+    testNetworkTimeouts();
+}
+```
+
+### Mock Error Responses
+
+Use mocking to test error handling:
+
+```php
+function mockErrorResponse($statusCode, $errorMessage) {
+    return new MockResponse($statusCode, [
+        'message' => [
+            'code' => $statusCode,
+            'error' => [$errorMessage]
+        ],
+        'data' => [],
+        'type' => 'error'
+    ]);
+}
+```
+
+## Common Error Patterns
+
+### 1. Token Expiration
+
+```php
+if ($response->getStatusCode() === 403 && 
+    strpos($response->getBody(), 'invalid token') !== false) {
+    // Token expired, get new one
+    $newToken = refreshAccessToken();
+    // Retry request
+}
+```
+
+### 2. Rate Limiting
+
+```php
+if ($response->getStatusCode() === 429) {
+    $retryAfter = $response->getHeader('Retry-After')[0] ?? 60;
+    sleep($retryAfter);
+    // Retry request
+}
+```
+
+### 3. Network Issues
+
+```php
+try {
+    $response = makeRequest($request);
+} catch (ConnectException $e) {
+    // Network issue, retry
+    retryWithBackoff($request);
+} catch (RequestException $e) {
+    // Other request issue
+    handleRequestError($e);
+}
+```
+
+## Next Steps
+
+- [Learn about response codes](/docs/guides/response-codes)
+- [Implement best practices](/docs/guides/best-practices)
+- [Set up monitoring](/docs/guides/monitoring)
